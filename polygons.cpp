@@ -267,6 +267,7 @@ void open(node_p parent){
 	for(list<node_p>::iterator i = fringe_list.begin(); i!= fringe_list.end(); i++){
         if (isValid(parent, (*i)) && (*i)->weight > parent->weight + getDistance((*i), parent)){
         	(*i)->weight = parent->weight + getDistance((*i), parent);
+        	(*i)->parent = parent;
         	fringe_list.sort(compareWeight);
         }
     }
