@@ -343,6 +343,8 @@ void render(){
 	glVertex3f(start->point->x, start->point->y, 0.0);
 	glEnd();
 
+	glutSwapBuffers ( );
+
 }
 
 int main(int argc, char **argv)
