@@ -244,12 +244,12 @@ bool isValid(node_p n1, node_p n2){
 	if (isInFigure(n1->point, n2->point) && (n2->point != n1->point->next && n2->point != n1->point->last)){
 		return false;
 	}
-	/*if (isEqualToFigure(n1->point, n2->point)){
+	if (isEqualToFigure(n1->point, n2->point)){
 		return false;
 	}
 	if (isEqualToFigure(n2->point, n1->point)){
 		return false;
-	}*/
+	}
 	edge_p route = createEdge(n1->point, n2->point);
 	bool res = true;
 	for(list<edge_p>::iterator i = edges_list.begin(); i!= edges_list.end(); i++){
