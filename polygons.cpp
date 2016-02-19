@@ -1,3 +1,5 @@
+#include <GL/glut.h>
+#include <GL/gl.h>
 #include "polygons.hpp"
 
 using namespace std;
@@ -28,6 +30,7 @@ list<node_p> closed_list;
 list<node_p> fringe_list;
 list<edge_p> edges_list;                                                        
 node_p start, finish;
+float maxX = 0, maxY = 0;
 
 void printFringe(){
 	printf("\n---- FRINGE ----\n");
@@ -114,6 +117,17 @@ void readFile(string file){
 		read >> output;
 		finish_point->y = stoi(output);read >> output;
 
+		if (start_point->x > maxX)
+			maxX = start_point->x;
+
+		if (start_point->y > maxY)
+			maxY = start_point->y;
+		if (finish_point->x > maxX)
+			maxX = finish_point->x;
+
+		if (finish_point->y > maxY)
+			maxY = finish_point->y;
+
 		start =(node_p) malloc(sizeof(node));
 		start->weight = 0;
 		start->point = start_point;
@@ -141,6 +155,12 @@ void readFile(string file){
 				vertex->x = stoi(output);
 				read >> output;
 				vertex->y = stoi(output);
+
+				if (vertex->x > maxX)
+					maxX = vertex->x;
+
+				if (vertex->y > maxY)
+					maxY = vertex->y;
 
 				if (i == 0)
 				{
@@ -204,10 +224,32 @@ bool isInFigure(point_p p1, point_p p2){
 	return false;
 }
 
-bool isValid(node_p n1, node_p n2){
-	if (isInFigure(n1->point, n2->point) && (n2->point != n1->point->next || n2->point != n1->point->last)){
+bool isEqualToFigure(point_p p1, point_p p2){
+	if(p1->next == NULL){
+		//printf("Estoy en start o finish\n");
 		return false;
 	}
+	for (point_p i = p1; i->next != p1; i=i->next)
+	{
+		if (p2->x == i->x && p2->y == i->y)
+
+			/*if((p2->x != p1->next->x && p2->y != p1->next->y)  (p2->x != p1->last->x && p2->y != p1->last->y))*/
+				return true;
+	}
+
+	return false;
+}
+
+bool isValid(node_p n1, node_p n2){
+	if (isInFigure(n1->point, n2->point) && (n2->point != n1->point->next && n2->point != n1->point->last)){
+		return false;
+	}
+	/*if (isEqualToFigure(n1->point, n2->point)){
+		return false;
+	}
+	if (isEqualToFigure(n2->point, n1->point)){
+		return false;
+	}*/
 	edge_p route = createEdge(n1->point, n2->point);
 	bool res = true;
 	for(list<edge_p>::iterator i = edges_list.begin(); i!= edges_list.end(); i++){
@@ -237,7 +279,8 @@ bool isValid(node_p n1, node_p n2){
         		//printf("%f, %f to %f, %f crosses %f, %f to %f, %f in %f, %f\n", route->limit_a->x,route->limit_a->y,route->limit_b->x,route->limit_b->y, (*i)->limit_a->x,(*i)->limit_a->y,(*i)->limit_b->x,(*i)->limit_b->y, colX, colY);
         		//printf("choque esquina\n");
         		//printf("%f,%f - %f,%f\n",colX,colY,(float) route->limit_b->x, (float)route->limit_b->y);
-        		if (between(colX, route->limit_a->x, route->limit_b->x) && between(colX, (*i)->limit_a->x, (*i)->limit_b->x))
+        		if (between(colX, route->limit_a->x, route->limit_b->x) && between(colX, (*i)->limit_a->x, (*i)->limit_b->x) &&
+        			between(colY, route->limit_a->y, route->limit_b->y) && between(colY, (*i)->limit_a->y, (*i)->limit_b->y) )
         			res = false; 
         	}
 
@@ -284,7 +327,60 @@ void open(node_p parent){
     }
 }
 
-int main(int argc, char const *argv[])
+
+void render(){
+	glClearColor(1.0,1.0,1.0,0.0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glLineWidth(1); 
+	glColor3f(0.8, 0.8, 0.8);
+
+	for(int i=0; i<= maxX; i++){
+		glBegin(GL_LINES);
+		glVertex3f(i, 0, 0.0);
+		glVertex3f(i, maxY, 0.0);
+		glEnd();
+	}
+
+	
+	for(int i=0; i<= maxY; i++){
+		glBegin(GL_LINES);
+		glVertex3f(0, i, 0.0);
+		glVertex3f(maxX, i, 0.0);
+		glEnd();
+	}
+
+	glLineWidth(1.5); 
+	glColor3f(1.0, 0.0, 0.0);
+
+
+	for(list<edge_p>::iterator i = edges_list.begin(); i!= edges_list.end(); i++){
+		glBegin(GL_LINES);
+		glVertex3f((*i)->limit_a->x, (*i)->limit_a->y, 0.0);
+		glVertex3f((*i)->limit_b->x, (*i)->limit_b->y, 0.0);
+		glEnd();
+	}
+	glLineWidth(2.5); 
+	glColor3f(0.0, 1.0, 0.0);
+	for (node_p i = fringe_list.front(); i->parent != NULL; i = i->parent){
+		glBegin(GL_LINES);
+		glVertex3f(i->point->x, i->point->y, 0.0);
+		glVertex3f(i->parent->point->x, i->parent->point->y, 0.0);
+		glEnd();
+	}
+
+	glPointSize(10);
+	glColor3f(0.0, 0.0, 1.0);
+	glBegin(GL_POINTS);
+	glVertex3f(fringe_list.front()->point->x, fringe_list.front()->point->y, 0.0);
+	glEnd();
+
+	glBegin(GL_POINTS);
+	glVertex3f(start->point->x, start->point->y, 0.0);
+	glEnd();
+
+}
+
+int main(int argc, char **argv)
 {
 	readFile(argv[1]);
 
@@ -303,20 +399,21 @@ int main(int argc, char const *argv[])
 	}
 
 
-	/*for (int i = 0; i < 10; ++i)
-	{
-		node_p temp =(node_p) malloc(sizeof(node));
-		temp->weight = i;
-		fringe.push(temp);
-	}
-	node_p temp =(node_p) malloc(sizeof(node));
-	temp->weight = -3;
-	fringe.push(temp);
-	for (int i = 0; i < 11; ++i)
-	{
-		printf("%f\n",fringe.top()->weight);
-		fringe.p|op();
-	}*/
+	glutInit(&argc, argv);
+    glutInitDisplayMode ( GLUT_SINGLE | GLUT_RGB | GLUT_DEPTH);
+
+    glutInitWindowPosition(100,100);
+    glutInitWindowSize(500,500);
+    glutCreateWindow ("square");
+
+    glClearColor(0.0, 0.0, 0.0, 0.0);         // black background
+    glMatrixMode(GL_PROJECTION);              // setup viewing projection
+    glLoadIdentity();                           // start with identity matrix
+    glOrtho(0.0, maxX + 1, 0.0, maxY + 1, -1.0, 1.0);   // setup a 10x10x2 viewing world
+
+    glutDisplayFunc(render);
+
+    glutMainLoop();
 	
 	return 0;
 }
