@@ -4,12 +4,13 @@
 
 using namespace std;
 
-struct CompareWeight {
-    bool operator()(node_p const & p1, node_p const & p2) {
-        // return "true" if "p1" is ordered before "p2", for example:
-        return p1->weight + p1->heuristic > p2->weight + p2->heuristic;
-    }
-};
+list<poligon_p> poligon_list;
+list<node_p> open_list;
+list<node_p> closed_list;
+list<node_p> fringe_list;
+list<edge_p> edges_list;                                                        
+node_p start, finish;
+float maxX = 0, maxY = 0;
 
 bool compareWeight(node_p const & p1, node_p const & p2){
 	return p1->weight + p1->heuristic < p2->weight + p2->heuristic;
@@ -23,26 +24,17 @@ bool between(float value, float la, float lb){
 	}
 }
 
-//priority_queue<node_p, vector<node_p>, CompareWeight> fringe;
-list<poligon_p> poligon_list;
-list<node_p> open_list;
-list<node_p> closed_list;
-list<node_p> fringe_list;
-list<edge_p> edges_list;                                                        
-node_p start, finish;
-float maxX = 0, maxY = 0;
-
 void printFringe(){
 	printf("\n---- FRINGE ----\n");
 	for(list<node_p>::iterator i = fringe_list.begin(); i!= fringe_list.end(); i++){
-        printf("%f,%f -> %f \n", (*i)->point->x, (*i)->point->y, (*i)->weight + (*i)->heuristic);
+        printf("%1.0f,%1.0f -> %f \n", (*i)->point->x, (*i)->point->y, (*i)->weight + (*i)->heuristic);
     }
 }
 
 void printClosed(){
 	printf("\n---- CLOSED ----\n");
 	for(list<node_p>::iterator i = closed_list.begin(); i!= closed_list.end(); i++){
-        printf("%f,%f \n", (*i)->point->x, (*i)->point->y);
+        printf("%1.0f,%1.0f \n", (*i)->point->x, (*i)->point->y);
     }
 }
 
@@ -64,7 +56,7 @@ void printPoligon(poligon_p poligon){
 			printf("Poligon of %d sides\n",poligon->sides);	
 	}
 	do{
-		printf("x: %f, y: %f \n",iterator->x, iterator->y );
+		printf("%1.0f,%1.0f \n",iterator->x, iterator->y );
 		iterator = iterator->next;
 	}while(iterator != poligon->start);
 }
@@ -74,7 +66,6 @@ edge_p createEdge(point_p p1, point_p p2){
 	if (p2->x == p1->x ){
 		new_edge->m = MAX;
 		new_edge->b = p1->x;
-		//printf("%f %f\n",p1->x, p2->x );
 		new_edge->vertical = true;
 	}
 	else{
@@ -82,23 +73,11 @@ edge_p createEdge(point_p p1, point_p p2){
 		new_edge->m = (float) (p2->y - p1->y) / ((p2->x - p1->x));
 		new_edge->b = (-new_edge->m * p1->x) + p1->y;
 	}
-    //printf("%f - %f / ");
-	//printf("%f - %f / %f - %f\n", p2->y, p1->y, p2->x, p1->x);
-	//printf("m = %f, b = %f\n",new_edge->m, new_edge->b);
     new_edge->limit_a = p1;
 	new_edge->limit_b = p2;
 
 	return new_edge;
 }
-
-// FIX going between figures
-// create vertex->before and if the node is in the same poligon, only check it if its next or before
-
-// NEEDS FIX
-// if a node from other figure is exactly at the same point of one of the oposite sides of a figure, it will pass throught the figure
-// requeue after changing a value
-// check why 0,4 can't go to 1,9
-
 
 void readFile(string file){
 	ifstream read;
@@ -209,14 +188,11 @@ float getDistance(node_p n1, node_p n2){
 }
 
 bool isInFigure(point_p p1, point_p p2){
-	//printf("is in figure\n");
 	if(p1->next == NULL){
-		//printf("Estoy en start o finish\n");
 		return false;
 	}
 	for (point_p i = p1; i->next != p1; i=i->next)
 	{
-		//printf("aaa %d, %d\n",i->x,i->y);
 		if (i == p2)
 			return true;
 	}
@@ -226,17 +202,14 @@ bool isInFigure(point_p p1, point_p p2){
 
 bool isEqualToFigure(point_p p1, point_p p2){
 	if(p1->next == NULL){
-		//printf("Estoy en start o finish\n");
 		return false;
 	}
 	for (point_p i = p1; i->next != p1; i=i->next)
 	{
 		if (p2->x == i->x && p2->y == i->y)
-
-			/*if((p2->x != p1->next->x && p2->y != p1->next->y)  (p2->x != p1->last->x && p2->y != p1->last->y))*/
+			//if((p2->x != p1->next->x && p2->y != p1->next->y)  (p2->x != p1->last->x && p2->y != p1->last->y))
 				return true;
 	}
-
 	return false;
 }
 
@@ -244,12 +217,12 @@ bool isValid(node_p n1, node_p n2){
 	if (isInFigure(n1->point, n2->point) && (n2->point != n1->point->next && n2->point != n1->point->last)){
 		return false;
 	}
-	/*if (isEqualToFigure(n1->point, n2->point)){
+	if (isEqualToFigure(n1->point, n2->point)){
 		return false;
 	}
 	if (isEqualToFigure(n2->point, n1->point)){
 		return false;
-	}*/
+	}
 	edge_p route = createEdge(n1->point, n2->point);
 	bool res = true;
 	for(list<edge_p>::iterator i = edges_list.begin(); i!= edges_list.end(); i++){
@@ -261,31 +234,23 @@ bool isValid(node_p n1, node_p n2){
         	if ((*i)->vertical == true){
         		colX = (*i)->b;
         		colY = (colX * route->m) + route->b;
-        		//printf("guardada vertical\n");
         	}
         	else if(route->vertical == true){
         		colX = route->b;
         		colY = (colX * (*i)->m) + (*i)->b;
-        		//printf("calculada vertical %f\n", route->vertical);
         	}
         	else{
         		colX = (float) ((*i)->b - route->b) / (route->m - (*i)->m);
         		colY = (colX * (*i)->m) + (*i)->b;
-        		//printf("normal\n");
         	}
-        	//printf("%f, %f to %f, %f crosses %f, %f to %f, %f in %f, %f\n", (*i)->limit_a->x,(*i)->limit_a->y,(*i)->limit_b->x,(*i)->limit_b->y,  route->limit_a->x,route->limit_a->y,route->limit_b->x,route->limit_b->y, colX, colY);
-        	//printf("y = %fx + %f, y = %fx + %f \n",(*i)->b,(*i)->m, route->b, route->m);
         	if ((colX != route->limit_b->x && colY != route->limit_b->y) && (colX != route->limit_a->x && colY != route->limit_a->y)){
-        		//printf("%f, %f to %f, %f crosses %f, %f to %f, %f in %f, %f\n", route->limit_a->x,route->limit_a->y,route->limit_b->x,route->limit_b->y, (*i)->limit_a->x,(*i)->limit_a->y,(*i)->limit_b->x,(*i)->limit_b->y, colX, colY);
-        		//printf("choque esquina\n");
-        		//printf("%f,%f - %f,%f\n",colX,colY,(float) route->limit_b->x, (float)route->limit_b->y);
         		if (between(colX, route->limit_a->x, route->limit_b->x) && between(colX, (*i)->limit_a->x, (*i)->limit_b->x) &&
         			between(colY, route->limit_a->y, route->limit_b->y) && between(colY, (*i)->limit_a->y, (*i)->limit_b->y) )
         			res = false; 
         	}
 
         	if (res == false){
-        		printf("%f, %f to %f, %f fails because it crashes %f, %f to %f, %f in %f, %f\n", 
+        		printf("%1.0f,%1.0f to %1.0f,%1.0f fails because it crashes %1.0f,%1.0f to %1.0f,%1.0f in %f, %f\n", 
         			route->limit_a->x,route->limit_a->y,route->limit_b->x,route->limit_b->y, 
         			(*i)->limit_a->x,(*i)->limit_a->y,(*i)->limit_b->x,(*i)->limit_b->y, 
         			colX, colY);
@@ -297,7 +262,7 @@ bool isValid(node_p n1, node_p n2){
 }
 
 void open(node_p parent){
-	printf("\n\nEXPLORATION OF NODE %f,%f WITH WEIGHT %f\n",parent->point->x, parent->point->y, parent->weight + parent->heuristic );
+	printf("\n\nEXPLORATION OF NODE %1.0f,%1.0f WITH WEIGHT %f\n",parent->point->x, parent->point->y, parent->weight + parent->heuristic );
 	printFringe();
 	for(list<node_p>::iterator i = fringe_list.begin(); i!= fringe_list.end(); i++){
         if (isValid(parent, (*i)) && (*i)->weight > parent->weight + getDistance((*i), parent)){
@@ -313,8 +278,8 @@ void open(node_p parent){
         	(*i)->weight = parent->weight + getDistance(parent, (*i));
         	(*i)->heuristic = getDistance((*i), finish);
 
-        	printf("Parent is %f, %f \n", parent->point->x, parent->point->y);
-   			printf("Child  is %f, %f  with %f\n", (*i)->point->x, (*i)->point->y, (*i)->weight + (*i)->heuristic);
+        	printf("Parent is %1.0f,%1.0f \n", parent->point->x, parent->point->y);
+   			printf("Child  is %1.0f,%1.0f  with %f\n", (*i)->point->x, (*i)->point->y, (*i)->weight + (*i)->heuristic);
 
         	//fringe.push((*i));
         	fringe_list.push_back((*i));
@@ -337,7 +302,7 @@ void render(){
 	for(int i=0; i<= maxX; i++){
 		glBegin(GL_LINES);
 		glVertex3f(i, 0, 0.0);
-		glVertex3f(i, maxY, 0.0);
+		glVertex3f(i, maxY + 1, 0.0);
 		glEnd();
 	}
 
@@ -345,7 +310,7 @@ void render(){
 	for(int i=0; i<= maxY; i++){
 		glBegin(GL_LINES);
 		glVertex3f(0, i, 0.0);
-		glVertex3f(maxX, i, 0.0);
+		glVertex3f(maxX + 1, i, 0.0);
 		glEnd();
 	}
 
@@ -394,7 +359,7 @@ int main(int argc, char **argv)
 
 	printf("\n\n RESULT\n");
 	for (node_p i = fringe_list.front(); i != NULL; i = i->parent){
-		printf("%f, %f -> %f\n", i->point->x, i->point->y, i->weight);
+		printf("%1.0f,%1.0f -> %f\n", i->point->x, i->point->y, i->weight);
 		printf("------------------------------\n");
 	}
 
